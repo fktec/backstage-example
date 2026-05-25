@@ -1,0 +1,25 @@
+services:
+    # SERVICE - GRAFANA	
+    backstage-app:
+        image: backstage-demo-fk:latest
+        container_name: backstage-app
+        ports:
+            - "7007:7007"
+        environment:
+            - APP_CONFIG_auth_providers_guest_dangerouslyAllowOutsideDevelopment=true
+            - BACKSTAGE_ENV=dev
+        networks: 
+            - shared-network
+    camel-quakus-api:
+        image: camel-quarkus/camel-quarkus-backstage-api:latest
+        container_name: camel-quarkus-backstage-api
+        ports:
+            - "8080:8080"
+            - "8081:8081"
+        networks: 
+            - shared-network
+   
+# NETWORK - CUSTOM
+networks:
+    shared-network:
+        driver: bridge
