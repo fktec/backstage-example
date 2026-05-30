@@ -1,25 +1,69 @@
 services:
-    # SERVICE - GRAFANA	
+
+    # netshoot:
+    #     image: nicolaka/netshoot:latest
+    #     container_name: netshoot
+    #     command: sleep infinity
+    #     networks: 
+    #         - shared-network
+    
+    gitlab:
+        image: gitlab/gitlab-ce:18.6.6-ce.0
+        container_name: gitlab
+        restart: always
+        hostname: 'gitlab.172.26.47.49.nip.io'
+        environment:
+            GITLAB_OMNIBUS_CONFIG: |
+                # Add any other gitlab.rb configuration here, each on its own line
+                external_url 'http://gitlab.172.26.47.49.nip.io'
+                nginx['listen_port'] = 80
+        ports:
+            - '80:80'
+            - '443:443'
+            - '22:22'
+        volumes:
+            - '$GITLAB_HOME/config:/etc/gitlab'
+            - '$GITLAB_HOME/logs:/var/log/gitlab'
+            - '$GITLAB_HOME/data:/var/opt/gitlab'
+        shm_size: '256m'
+        networks: 
+            - shared-network
+    gitlab-runner:
+        image: gitlab/gitlab-runner:latest
+        container_name: gitlab-runner1
+        restart: always
+        volumes: 
+            - /home/{{user}}/containers/gitlab-runner/config:/etc/gitlab-runner
+            # [REQUIRED]: Socket do Docker Engine, responsável por fazer a comunicação com o Docker Engine (esse volume faz com que esse container consiga controlar o docker externo)
+            - /var/run/docker.sock:/var/run/docker.sock   
+        networks: 
+            - shared-network
     backstage-app:
-        image: backstage-demo-fk:latest
+        build:
+            dockerfile:	./Dockerfile
+            context: ./BACKSTAGE APPS/backstage-app
+        # image: backstage-demo-fk:latest
         container_name: backstage-app
         ports:
             - "7007:7007"
         environment:
             - APP_CONFIG_auth_providers_guest_dangerouslyAllowOutsideDevelopment=true
             - BACKSTAGE_ENV=dev
+        # volumes:
+        #     - backstage-volume:/app                     
         networks: 
             - shared-network
-    camel-quakus-api:
-        image: camel-quarkus/camel-quarkus-backstage-api:latest
-        container_name: camel-quarkus-backstage-api
-        ports:
-            - "8080:8080"
-            - "8081:8081"
-        networks: 
-            - shared-network
+    # camel-quakus-api:
+    #     image: camel-quarkus/camel-quarkus-backstage-api:latest
+    #     container_name: camel-quarkus-backstage-api
+    #     ports:
+    #         - "8080:8080"
+    #         - "8081:8081"
+    #     networks: 
+    #         - shared-network
    
 # NETWORK - CUSTOM
 networks:
     shared-network:
         driver: bridge
+
