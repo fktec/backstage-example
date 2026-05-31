@@ -32,7 +32,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get install -y --no-install-recommends libsqlite3-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# TechDocs Local
+# [OPCIONAL] TechDocs Local
 RUN apt-get update && \
     apt-get install -y python3 python3-pip python3-venv && \
     rm -rf /var/lib/apt/lists/*
@@ -56,27 +56,28 @@ COPY --chown=node:node .yarn ./.yarn
 COPY --chown=node:node .yarnrc.yml ./
 COPY --chown=node:node backstage.json ./
 
+COPY --chown=node:node yarn.lock package.json packages/backend/dist/skeleton.tar.gz ./
+RUN tar xzf skeleton.tar.gz && rm skeleton.tar.gz
+
+# Copy repo skeleton first, to avoid unnecessary docker cache invalidation.
+# The skeleton contains the package.json of each package in the monorepo,
+# and along with yarn.lock and the root package.json, that's enough to run yarn install.
+RUN --mount=type=cache,target=/home/node/.cache/yarn,sharing=locked,uid=1000,gid=1000 \
+    yarn workspaces focus --all --production && rm -rf "$(yarn cache clean)"
+
+# Then copy the rest of the backend bundle, along with any other files we might want.
+COPY --chown=node:node packages/backend/dist/bundle.tar.gz app-config*.yaml ./
+RUN tar xzf bundle.tar.gz && rm bundle.tar.gz
+
+# [OPCIONAL]: This will include the examples, if you don't need these simply remove this line (se deseja carregar as entidades de exemplo)
+COPY --chown=node:node examples ./examples
+
 # This switches many Node.js dependencies to production mode.
 ENV NODE_ENV=production
 
 # This disables node snapshot for Node 20 to work with the Scaffolder
 ENV NODE_OPTIONS="--no-node-snapshot"
 
-# Copy repo skeleton first, to avoid unnecessary docker cache invalidation.
-# The skeleton contains the package.json of each package in the monorepo,
-# and along with yarn.lock and the root package.json, that's enough to run yarn install.
-COPY --chown=node:node yarn.lock package.json packages/backend/dist/skeleton.tar.gz ./
-RUN tar xzf skeleton.tar.gz && rm skeleton.tar.gz
-
-RUN --mount=type=cache,target=/home/node/.cache/yarn,sharing=locked,uid=1000,gid=1000 \
-    yarn workspaces focus --all --production && rm -rf "$(yarn cache clean)"
-
-# This will include the examples, if you don't need these simply remove this line
-COPY --chown=node:node examples ./examples
-
-# Then copy the rest of the backend bundle, along with any other files we might want.
-COPY --chown=node:node packages/backend/dist/bundle.tar.gz app-config*.yaml ./
-RUN tar xzf bundle.tar.gz && rm bundle.tar.gz
-
 # CMD ["node", "packages/backend", "--config", "app-config.yaml", "--config", "app-config.production.yaml"]
+# Sem as referências explícitas (obrigado a definir a environment "BACKSTAGE_ENV" para escolher o app-confi.<ENV>.yaml a ser usado)
 CMD ["node", "packages/backend"]
