@@ -1,3 +1,5 @@
+# TESTE 2
+
 app:
   baseUrl: http://localhost:7007
 
@@ -20,13 +22,45 @@ techdocs:
   publisher:
     type: 'local'
 
-# Sem autenticação
+# Auth
 auth:
+  environment: development
   providers:
+    # Guest
     guest: {}
+    # Microsoft Entra ID
+    microsoft:
+      development:
+        clientId: ${AZURE_CLIENT_ID}
+        clientSecret: ${AZURE_CLIENT_SECRET}
+        tenantId: ${AZURE_TENANT_ID}
+        domainHint: ${AZURE_TENANT_ID}
+        signIn:
+          resolvers:
+            # See https://backstage.io/docs/auth/microsoft/provider#resolvers for more resolvers
+            - resolver: emailMatchingUserEntityProfileEmail
 
+# Integrations
+integrations:
+  gitlab:
+    - host: ${GITLAB_HOSTNAME}
+      apiBaseUrl: ${GITLAB_EXTERNAL_URL}/api/v4
+      baseUrl: ${GITLAB_EXTERNAL_URL}
+      token: ${GITLAB_TOKEN}
+
+# Scaffolder Template (Global Configs)
+scaffolder:
+  defaultEnvironment:
+    parameters:
+      gitlabHostName: ${GITLAB_HOSTNAME}
+
+# Catalog
 catalog:
+  rules:
+    - allow: [Component, API, Resource, Location, Template]
+
   locations:
+    # Local
     - type: file
       target: ./examples/entities.yaml
 
@@ -39,3 +73,39 @@ catalog:
       target: ./examples/org.yaml
       rules:
         - allow: [User, Group]
+
+    # External
+    ## Gitlab Scaffolder Templates - Manual
+    # - type: url
+    #   target: ${GITLAB_EXTERNAL_URL}/idp/backstage-scaffolder-templates/-/blob/main/all-templates.yaml
+    #   rules:
+    #     - allow: [Template]
+
+  # Gitlab - Importando catálogos do Gitlab (componente, api, resource, templates...)
+  providers:
+    gitlab:
+      gitlab-local:
+        host: ${GITLAB_HOSTNAME}
+        branch: main
+        fallbackBranch: master
+        group: team-fk
+        entityFilename: catalog-info.yaml
+        projectPattern: 'camel-quarkus-api-test'
+        schedule:
+          frequency:
+            minutes: 2
+          timeout:
+            minutes: 1
+
+      gitlab-scaffolder-templates:
+        host: ${GITLAB_HOSTNAME}
+        branch: main
+        fallbackBranch: master
+        group: idp
+        entityFilename: all-templates.yaml
+        projectPattern: 'backstage-scaffolder-templates'
+        schedule:
+          frequency:
+            minutes: 3
+          timeout:
+            minutes: 2
